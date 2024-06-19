@@ -28,9 +28,9 @@ type traefik_mmdb_plugin struct {
 
 func CreateCofig() *Config {
 	return &Config{
-		mm_asn_db:             "GeoLite2-ASN.mmdb",
-		mm_client_asn_header:  "Default_Results_Header",
-		true_client_ip_header: "192.168.0.1",
+		mm_asn_db:             "./GeoLite2-ASN.mmdb", // Lookup default traefik configuration files path
+		mm_client_asn_header:  "X-ASN",
+		true_client_ip_header: "True-Client-IP",
 	}
 }
 
@@ -60,20 +60,16 @@ var lookup_func LookupGeoip2
 // reader in global var lookup
 func New(ctx context.Context, next http.Handler, config *Config, name string) (http.Handler, error) {
 	if _, err := os.Stat(config.mm_asn_db); err != nil {
-		log.Printf("[geoip2] DB not found: db = %s, name = %s, err = %v", config.mm_asn_db, name, err)
-		return &traefik_mmdb_plugin{
-			next:                  next,
-			name:                  name,
-			mm_asn_db:             "",
-			mm_client_asn_header:  "",
-			true_client_ip_header: "",
-		}, nil
+		log.Printf("{\"message\":\"[geoip2] DB not found\", \"db\":\"%s\", \"name\":\"%s\", \"err \":\"%v\"}",
+			config.mm_asn_db, name, err)
+		return nil, nil
 	}
 
 	if lookup_func == nil {
 		db, err := geoip2.NewASNReader([]byte(config.mm_asn_db))
 		if err != nil {
-			log.Printf("[geoip2] DB is not intialized: db = %s, name = %s, err = %v", config.mm_asn_db, name, err)
+			log.Printf("{\"message\":\"[geoip2] DB is not initialized\", \"db\":\"%s\", \"name\":\"%s\", \"err \":\"%v\"}",
+				config.mm_asn_db, name, err)
 		} else {
 			lookup_func = CreateDBLookup(db)
 		}
@@ -93,10 +89,10 @@ func (a *traefik_mmdb_plugin) ServeHTTP(rw http.ResponseWriter, req *http.Reques
 	res, err := lookup_func(ip)
 
 	if err != nil {
+		req.Header.Add(a.mm_client_asn_header, "")
+	} else {
 		res_json, _ := json.Marshal(res)
 		req.Header.Add(a.mm_client_asn_header, string(res_json))
-	} else {
-		req.Header.Add(a.mm_client_asn_header, "NULL")
 	}
 
 	a.next.ServeHTTP(rw, req)
