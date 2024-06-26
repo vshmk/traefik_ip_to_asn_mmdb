@@ -38,7 +38,7 @@ type traefik_mmdb_plugin struct {
 
 func CreateConfig() *Config {
 	return &Config{
-		mm_asn_db:             "./GeoLite2-ASN.mmdb", // Lookup default traefik configuration files path
+		mm_asn_db:             "/etc/traefik/GeoLite2-ASN.mmdb", // Lookup default traefik configuration files path
 		mm_client_asn_header:  "X-ASN",
 		true_client_ip_header: "True-Client-IP",
 	}
