@@ -7,6 +7,6 @@ type: middleware
 import: github.com/Crvsade/traefik_ip_to_asn_mmdb
 
 testData:
-  mm_asn_db: 'GeoLite2-ASN.mmdb'
-  mm_client_asn_header:  "Default_Results_Header"
-  true_client_ip_header: "192.168.0.1"
+  mm_asn_db: '/etc/traefik/GeoLite2-ASN.mmdb'
+  mm_client_asn_header:  "X-ASN"
+  true_client_ip_header: "True-Client-IP"
