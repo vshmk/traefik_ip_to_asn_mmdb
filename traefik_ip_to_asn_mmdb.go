@@ -15,6 +15,7 @@ import (
 
 type LookupGeoip2 func(ip net.IP) (*GeoipResult, error)
 
+// reader in global var lookup
 var lookup_func LookupGeoip2
 
 func ResetLookup() {
@@ -62,24 +63,25 @@ func CreateDBLookup(reader *geoip2.ASNReader) LookupGeoip2 {
 	}
 }
 
-// reader in global var lookup
 func New(ctx context.Context, next http.Handler, config *Config, name string) (http.Handler, error) {
 	if _, err := os.Stat(config.mm_asn_db); err != nil {
-		log.Printf("{\"message\":\"[geoip2] DB not found\", \"db\":\"%s\", \"name\":\"%s\", \"err \":\"%v\"}",
+		log.Printf("{\"message\":\"[geoip2] DB not found\", \"db\":\"%s\", \"name\":\"%s\", \"err\":\"%v\"}",
 			config.mm_asn_db, name, err)
+		//This returns valid plugin configuration,
+		//so that plugin instance will not crash
 		return &traefik_mmdb_plugin{
 			next:                  next,
 			name:                  name,
 			mm_asn_db:             config.mm_asn_db,
-			mm_client_asn_header:  config.mm_asn_db,
+			mm_client_asn_header:  config.mm_client_asn_header,
 			true_client_ip_header: config.true_client_ip_header,
 		}, nil
 	}
 
 	if lookup_func == nil && strings.Contains(config.mm_asn_db, "ASN") {
-		db, err := geoip2.NewASNReader([]byte(config.mm_asn_db))
+		db, err := geoip2.NewASNReaderFromFile(config.mm_asn_db)
 		if err != nil {
-			log.Printf("{\"message\":\"[geoip2] DB is not initialized\", \"db\":\"%s\", \"name\":\"%s\", \"err \":\"%v\"}",
+			log.Printf("{\"message\":\"[geoip2] DB is not initialized\", \"db\":\"%s\", \"name\":\"%s\", \"err\":\"%v\"}",
 				config.mm_asn_db, name, err)
 		} else {
 			lookup_func = CreateDBLookup(db)
@@ -90,20 +92,27 @@ func New(ctx context.Context, next http.Handler, config *Config, name string) (h
 		next:                  next,
 		name:                  name,
 		mm_asn_db:             config.mm_asn_db,
-		mm_client_asn_header:  config.mm_asn_db,
+		mm_client_asn_header:  config.mm_client_asn_header,
 		true_client_ip_header: config.true_client_ip_header,
 	}, nil
 }
 
 func (a *traefik_mmdb_plugin) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	ip, _, _ := net.ParseCIDR(req.Header.Get(a.true_client_ip_header))
+	//Needed in case there is no valid DB available
+	if lookup_func == nil {
+		req.Header.Set(a.mm_client_asn_header, "")
+		a.next.ServeHTTP(rw, req)
+		return
+	}
+
+	ip := net.ParseIP(req.Header.Get(a.true_client_ip_header))
 	res, err := lookup_func(ip)
 
 	if err != nil {
-		req.Header.Add(a.mm_client_asn_header, "")
+		req.Header.Set(a.mm_client_asn_header, "")
 	} else {
 		res_json, _ := json.Marshal(res)
-		req.Header.Add(a.mm_client_asn_header, string(res_json))
+		req.Header.Set(a.mm_client_asn_header, string(res_json))
 	}
 
 	a.next.ServeHTTP(rw, req)
