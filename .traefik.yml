@@ -1,8 +1,8 @@
 displayName: MaxMind GeoIP2 IP to ASN
+type: middleware
 
 summary: 'Getting data from MaxMind ASN GeoIP databases and pass it downstream via HTTP request headers.'
 
-type: middleware
 
 import: github.com/Crvsade/traefik_ip_to_asn_mmdb
 
