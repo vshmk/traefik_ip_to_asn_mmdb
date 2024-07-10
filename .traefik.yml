@@ -4,9 +4,9 @@ type: middleware
 summary: 'Getting data from MaxMind ASN GeoIP databases and pass it downstream via HTTP request headers.'
 
 
-import: github.com/Crvsade/traefik_ip_to_asn_mmdb
+import: github.com/vshmk/traefik_ip_to_asn_mmdb
 
 testData:
-  mm_asn_db: '/etc/traefik/GeoLite2-ASN.mmdb'
+  mm_asn_db: 'GeoLite2-ASN.mmdb'
   mm_client_asn_header:  "X-ASN"
   true_client_ip_header: "True-Client-IP"
